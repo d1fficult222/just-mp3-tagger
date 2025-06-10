@@ -28,16 +28,17 @@ def save_file(audio, hint):
     audio['TDRC'] = TDRC(encoding=3, text=date_entry.get())
     audio['TCON'] = TCON(encoding=3, text=str(genre_entry.get()))
     audio['TRCK'] = TRCK(encoding=3, text=track_entry.get())
-    audio['COMM'] = COMM(encoding=3, lang='eng', desc='', text=comment_entry.get())
+    audio.delall("COMM")  # Clear existing comments
+    audio.add(COMM(encoding=3, lang='eng', desc='', text=comment_entry.get()))
     # album art
     if removed_album_cover:
         audio.delall("APIC")
-    if cover_changed:
-        with open("cover.png", 'rb') as img:
+    elif cover_changed:
+        with open("cover.jpg", 'rb') as img:
             audio.add(
                 APIC(
                     encoding=3,        # UTF-8
-                    mime='image/png',
+                    mime='image/jpeg',
                     type=3,            # 3 = front cover
                     desc='Cover',
                     data=img.read()
@@ -47,13 +48,20 @@ def save_file(audio, hint):
     # lyrics
     audio.setall("USLT", [USLT(encoding=3, text=lyrics_entry.get('1.0','end'))])
     # save
-    audio.save(file_path)
-    os.remove("cover.png")
+    audio.save(file_path, v2_version=3)  # Use ID3v2.3 so that Windows Explorer can show the cover art
+    if os.path.exists("cover.jpg"):
+        os.remove("cover.jpg")
     clear_modified()
     if hint:
         messagebox.showinfo(title=file_path, message="已儲存變更")
 
 def load_data(audio):
+    global cover_changed
+    cover_changed = False
+    # Clear old cover.jpg
+    if os.path.exists("cover.jpg"):
+        os.remove("cover.jpg")
+
     # Title bar
     clear_modified()
     
@@ -78,23 +86,30 @@ def load_data(audio):
     except: pass
     try: track_entry.insert(0, audio['TRCK'][0])
     except: pass
-    try: comment_entry.insert(0, audio['COMM'][0])
+    try:
+        for c in audio.getall("COMM"):
+            comment_entry.insert(0, f"{c.text[0]}")
     except: pass
     try:
         for uslt in audio.getall("USLT"):
-            lrc = uslt.text
-        lyrics_entry.insert("end", lrc)
+            lrc = uslt.text.rstrip('\n')
+        lyrics_entry.insert("1.0", lrc)
     except: pass
 
     # Album Cover
+    found_cover = False
     for i in audio.values():
         if isinstance(i, APIC):
-            with open("cover.png", "wb") as img:
+            with open("cover.jpg", "wb") as img:
                 img.write(i.data)
-            show_album_art("cover.png")
-            return
-    show_album_art("no_cover.png")
-    resolution_label.config(text="沒有專輯圖片")
+            show_album_art("cover.jpg")
+            found_cover = True
+            break
+    if not found_cover:
+        if os.path.exists("cover.jpg"):
+            os.remove("cover.jpg")
+        show_album_art("no_cover.jpg")
+        resolution_label.config(text="沒有專輯圖片")
 
 
 def show_album_art(file):
@@ -111,7 +126,9 @@ def remove_album_art():
     removed_album_cover = True
     cover_changed = False
     mark_modified()
-    show_album_art("no_cover.png")
+    if os.path.exists("cover.jpg"):
+        os.remove("cover.jpg")
+    show_album_art("no_cover.jpg")
     resolution_label.config(text="沒有專輯圖片")
 
 def change_album_art():
@@ -121,14 +138,16 @@ def change_album_art():
         removed_album_cover = False
         cover_changed = True
         mark_modified()
-        show_album_art(file)
-        shutil.copy(file, "cover.png")
+        img = Image.open(file)
+        img = img.convert("RGB")
+        img.save("cover.jpg", "JPEG")
+        show_album_art("cover.jpg")
 
 def export_album_art():
     file = filedialog.asksaveasfilename(initialfile=f"{audio['TIT2']}.png", defaultextension=".png", filetypes=[("Image Files", "*.png"), ("Image Files", "*.jpg")])
     if file:
         try:
-            shutil.copy("cover.png", file)
+            shutil.copy("cover.jpg", file)
         except Exception as e:
             messagebox.showerror(title="發生錯誤", message=f'無法儲存檔案: "{file}"，錯誤: "{e}"')
 
@@ -238,7 +257,7 @@ def open_file():
         raise FileNotFoundError
     
 def initialize():
-    global file_path
+    global file_path, audio
     try:
         file_path = open_file()
         try:
@@ -271,7 +290,7 @@ def on_exit():
         elif answer:
             save_file(audio=audio, hint=False)
     try:
-        os.remove("cover.png")
+        os.remove("cover.jpg")
     except FileNotFoundError:
         pass
     root.destroy()
@@ -408,8 +427,7 @@ def lyrics_window():
         mixer.music.stop()
         lyrics_new = lrc_list_to_lrc_listed(lrc)
         lyrics_entry.delete('1.0', 'end')
-        for i in lyrics_new:
-            lyrics_entry.insert('end', f"{i}\n")
+        lyrics_entry.insert("1.0", '\n'.join(lyrics_new).rstrip('\n'))
         mixer.quit()
         window.destroy()
 
@@ -546,7 +564,7 @@ edit_menu.add_command(label="編輯同步歌詞", command=lyrics_window)
 menubar.add_cascade(label="編輯",menu=edit_menu)
 
 help_menu = tk.Menu(menubar, tearoff=0)
-help_menu.add_command(label="關於 just-mp3-tagger", command=lambda: messagebox.showinfo(title="關於", message="just-mp3-tagger v1.0\n2025.05.29"))
+help_menu.add_command(label="關於 just-mp3-tagger", command=lambda: messagebox.showinfo(title="關於", message="just-mp3-tagger v1.1\n2025.05.29"))
 menubar.add_cascade(label="說明",menu=help_menu)
 
 root.config(menu=menubar)

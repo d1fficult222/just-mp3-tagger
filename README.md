@@ -16,3 +16,16 @@ git clone "https://www.github.com/dfficult/just-mp3-tagger"
 ```
 
 3. 將 `no_cover.png` 與 `just-mp3-tagger.py` 放於同個資料夾內，並與此路徑執行python檔案，會跳出檔案選擇框，選擇你的`mp3`檔案，即可編輯
+
+
+
+## Changelog
+
+- 1.1
+  - 更改：以ID3v2.3儲存
+  - 更改：所有圖片以jpg格式儲存
+  - 修復：評論可以正常讀取
+  - 修復：新檔案會套用上一個檔案的cover
+  - 修復：字幕結尾空換行現在會移除
+- 1.0
+  - Initial Commit
