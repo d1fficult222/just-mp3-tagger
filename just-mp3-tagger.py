@@ -160,24 +160,31 @@ def upload_lyrics():
                 lyrics_entry.delete('1.0', 'end')
                 lyrics_entry.insert('1.0', ''.join(f.readlines()))
 
-def export_lyrics(file_format):
-    file = filedialog.asksaveasfilename(initialfile=f"{audio['TIT2']}.{file_format}", defaultextension=f".{file_format}", filetypes=[("Lyrics Files", f"*.{file_format}")])
-    if file:
-        # try:
-        lrc = lyrics_entry.get('1.0','end')
+def export_lyrics(file_format, method):
+    lrc = lyrics_entry.get('1.0','end')
+    if method == "copy":
+        root.clipboard_clear()
         if file_format == "lrc":
-            with open(file, 'w', encoding="utf-8") as f:
-                f.write(lrc)
+            root.clipboard_append(lrc)
         elif file_format == "txt":
-            txt = lrc_to_txt(lrc)
-            with open(file, 'w', encoding="utf-8") as f:
-                f.write(txt)
+            root.clipboard_append(lrc_to_txt(lrc))
         elif file_format == "srt":
-            txt = lrc_to_srt(lrc)
-            with open(file, 'w', encoding="utf-8") as f:
-                f.write(txt)
-        # except Exception as e:
-            # messagebox.showerror(title="發生錯誤", message=f'無法儲存檔案: "{file}"，錯誤: "{e}"')
+            root.clipboard_append(lrc_to_srt(lrc))
+        root.update()
+    else:
+        file = filedialog.asksaveasfilename(initialfile=f"{audio['TIT2']}.{file_format}", defaultextension=f".{file_format}", filetypes=[("Lyrics Files", f"*.{file_format}")])
+        if file:
+            if file_format == "lrc":
+                with open(file, 'w', encoding="utf-8") as f:
+                    f.write(lrc)
+            elif file_format == "txt":
+                txt = lrc_to_txt(lrc)
+                with open(file, 'w', encoding="utf-8") as f:
+                    f.write(txt)
+            elif file_format == "srt":
+                txt = lrc_to_srt(lrc)
+                with open(file, 'w', encoding="utf-8") as f:
+                    f.write(txt)
 
 
 def mills_to_lrc_time(ms):
@@ -220,7 +227,7 @@ def lrc_to_txt(lrc: str) -> str:
     txt_lines = []
     for i in lrc_lines:
         txt_lines.append(i[10:])
-    return "\n".join(txt_lines)
+    return "\n".join(txt_lines).rstrip("\n")
 
 def lrc_to_srt(lrc: str) -> str:
     lrc_lines = lrc_listed_to_lrc_list(lrc.split('\n'))
@@ -247,6 +254,13 @@ def lrc_to_srt(lrc: str) -> str:
         srt_lines.append('')
 
     return '\n'.join(srt_lines)
+
+def remove_time():
+    lrc = lyrics_entry.get('1.0','end')
+    lyrics_entry.delete("1.0", "end")
+    txt = lrc_to_txt(lrc)
+    lyrics_entry.insert('1.0', txt)
+    mark_modified()
 
 
 def open_file():
@@ -465,6 +479,13 @@ def lyrics_window():
     next_lyric()
     update_time()
     window.protocol("WM_DELETE_WINDOW", on_exit)
+    window.bind("<Space>", lambda event: sync_current())
+    window.bind("<Up>", lambda event: last_lyric())
+    window.bind("<Down>", lambda event: next_lyric())
+    window.bind("<k>", lambda event: play_pause())
+    window.bind("<Left>", lambda event: forward(-5))
+    window.bind("<Right>", lambda event: forward(5))
+    window.focus_set()
 
 
 
@@ -555,20 +576,31 @@ edit_menu.add_command(label="變更專輯圖片", command=change_album_art)
 edit_menu.add_command(label="匯出專輯圖片", command=export_album_art)
 edit_menu.add_separator()
 lyrics_menu = tk.Menu(edit_menu, tearoff=0)
-lyrics_menu.add_command(label=".srt 檔案", command=lambda: export_lyrics("srt"))
-lyrics_menu.add_command(label=".lrc 檔案", command=lambda: export_lyrics("lrc"))
-lyrics_menu.add_command(label=".txt 檔案 (不含時間戳記)", command=lambda: export_lyrics("txt"))
+lyrics_menu.add_command(label="匯出 .srt", command=lambda: export_lyrics("srt", "download"))
+lyrics_menu.add_command(label="複製 .srt", command=lambda: export_lyrics("srt", "copy"))
+lyrics_menu.add_separator()
+lyrics_menu.add_command(label="匯出 .lrc", command=lambda: export_lyrics("lrc", "download"))
+lyrics_menu.add_command(label="複製 .lrc", command=lambda: export_lyrics("lrc", "copy"))
+lyrics_menu.add_separator()
+lyrics_menu.add_command(label="匯出 .txt (不含時間戳記)", command=lambda: export_lyrics("txt", "download"))
+lyrics_menu.add_command(label="複製 .txt (不含時間戳記)", command=lambda: export_lyrics("txt", "copy"))
 edit_menu.add_command(label="上傳字幕檔案", command=upload_lyrics)
 edit_menu.add_cascade(label="匯出字幕檔案", menu=lyrics_menu)
 edit_menu.add_command(label="編輯同步歌詞", command=lyrics_window)
+edit_menu.add_command(label="移除所有字幕", command=lambda: lyrics_entry.delete("1.0", "end"))
+edit_menu.add_command(label="移除時間戳記", command=remove_time)
 menubar.add_cascade(label="編輯",menu=edit_menu)
 
 help_menu = tk.Menu(menubar, tearoff=0)
-help_menu.add_command(label="關於 just-mp3-tagger", command=lambda: messagebox.showinfo(title="關於", message="just-mp3-tagger v1.1\n2025.05.29"))
+help_menu.add_command(label="關於 just-mp3-tagger", command=lambda: messagebox.showinfo(title="關於", message="just-mp3-tagger v1.2\n2025.07.26"))
 menubar.add_cascade(label="說明",menu=help_menu)
 
 root.config(menu=menubar)
 
+
+# Shortcut Keys
+root.bind("<Control-s>", lambda event: save_file(audio=audio, hint=False))
+root.bind("<Control-o>", lambda event: initialize())
 
 
 

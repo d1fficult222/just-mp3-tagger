@@ -12,7 +12,7 @@ pip3 install pillow
 
 2. 下載程式
 ```bash
-git clone "https://www.github.com/dfficult/just-mp3-tagger"
+git clone "https://www.github.com/d1fficult222/just-mp3-tagger"
 ```
 
 3. 將 `no_cover.png` 與 `just-mp3-tagger.py` 放於同個資料夾內，並與此路徑執行python檔案，會跳出檔案選擇框，選擇你的`mp3`檔案，即可編輯
@@ -20,7 +20,10 @@ git clone "https://www.github.com/dfficult/just-mp3-tagger"
 
 
 ## Changelog
-
+- 1.2
+  - 新增：鍵盤快捷鍵 (Ctrl+S, Ctrl+O)
+  - 新增：複製歌詞
+  - 新增：移除時間戳記、移除所有字幕
 - 1.1
   - 更改：以ID3v2.3儲存
   - 更改：所有圖片以jpg格式儲存
